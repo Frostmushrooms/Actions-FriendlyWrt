@@ -1,12 +1,13 @@
 name: Build FriendlyWrt
 
 on:
+  workflow_dispatch:
   watch:
     types: started
 jobs:
   prepare_release:
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
     steps:
     - name: Get release tag
       id: release_tag
@@ -30,11 +31,11 @@ jobs:
   build_friendlywrt:
     needs: prepare_release
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
     strategy:
       matrix:
-        VERSION: ['25.12', '24.10']
-        SET: [docker, non-docker]
+        VERSION: ['24.10']
+        SET: [non-docker]
 
     steps:
     - name: Checkout
@@ -183,13 +184,13 @@ jobs:
   build_img:
     needs: [prepare_release,build_friendlywrt]
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
 
     strategy:
       matrix:
-        VERSION: ['25.12', '24.10']
-        CPU: [rk3328, rk3528, rk3399, rk3566, rk3568, rk3576, rk3588]
-        SET: [docker, non-docker]
+        VERSION: ['24.10']
+        CPU: [rk3528]
+        SET: [non-docker]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -381,7 +382,7 @@ jobs:
   cleanup_intermediate_assets:
     needs: [prepare_release, build_img]
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
     steps:
     - name: Delete intermediate assets from release
       env:

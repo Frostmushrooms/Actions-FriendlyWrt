@@ -1,0 +1,46 @@
+#!/bin/sh
+# NanoPi R28S 旁路由默认配置（首次开机执行一次，成功后自动删除）
+#   - LAN 静态 IP 10.10.1.2/24，网关与 DNS 指向主路由 10.10.1.1
+#   - 关闭本机 DHCP / IPv6 RA，避免与主路由冲突
+#   - root 密码固定为 password
+# 如需改成别的网段，只改下面两行即可
+
+MAIN_GW=10.10.1.1
+LAN_IP=10.10.1.2
+
+# 网络
+uci -q set network.lan.proto='static'
+uci -q set network.lan.ipaddr="$LAN_IP"
+uci -q set network.lan.netmask='255.255.255.0'
+uci -q set network.lan.gateway="$MAIN_GW"
+uci -q set network.lan.delegate='0'
+uci -q set network.lan.proxy_arp='1'
+uci -q delete network.lan.dns || true
+uci -q add_list network.lan.dns="$MAIN_GW"
+uci -q add_list network.lan.dns='223.5.5.5'
+uci -q set network.wan.disabled='1'
+uci -q commit network
+
+# DHCP：旁路由不分配地址
+uci -q set dhcp.lan.ignore='1'
+uci -q set dhcp.lan.ra='disabled'
+uci -q set dhcp.lan.dhcpv6='disabled'
+uci -q set dhcp.lan.ra_management='disabled'
+uci -q commit dhcp
+
+# 防火墙：放行转发，便于旁路代理
+for z in $(uci -q show firewall | grep -o 'firewall\.[^=]*=zone' | cut -d. -f2); do
+	uci -q set firewall.$z.forward='ACCEPT'
+done
+uci -q commit firewall
+
+# 主机名与时区
+uci -q set system.@system[0].hostname='NanoPi-R28S'
+uci -q set system.@system[0].zonename='Asia/Shanghai'
+uci -q set system.@system[0].timezone='CST-8'
+uci -q commit system
+
+# root 密码
+(echo 'root:password'; echo 'root:password') | chpasswd
+
+exit 0
